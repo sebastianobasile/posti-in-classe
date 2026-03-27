@@ -24,6 +24,8 @@ Progettato per insegnanti, funziona su qualsiasi browser — PC, LIM Android, ta
 Apri il file `index.html` in qualsiasi browser moderno (Chrome, Firefox, Safari, Edge).  
 Non richiede installazione, server o connessione a internet.
 
+Puoi utilizzarlo anche online qui: https://superscuola.com/classe
+
 ### 2. Creare la griglia
 - Fai clic su una **cella vuota** per aggiungere un banco
 - Nel modale che appare puoi:
