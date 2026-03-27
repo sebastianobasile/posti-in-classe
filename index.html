@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Classroom Planner Pro - S. Basile</title>
+    <style>
+        :root { --primary: #1e40af; --bg: #f1f5f9; --desk: #ffffff; --cattedra: #d97706; --accent: #10b981; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; user-select: none; display: flex; flex-direction: column; min-height: 100vh; }
+        .container { max-width: 1050px; margin: 0 auto; flex: 1; }
+
+        .header-area { text-align: center; margin-bottom: 20px; }
+        .class-title { font-size: 1.8rem; font-weight: 800; margin: 0; cursor: pointer; padding: 5px; }
+        .reference-date { font-size: 10pt; color: #64748b; font-weight: 600; margin-top: 4px; cursor: pointer; display: inline-block; }
+
+        .no-print { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        textarea { width: 100%; height: 60px; margin-top: 10px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; }
+
+        .class-bar { display: flex; align-items: center; gap: 8px; margin-top: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+        .class-bar label { font-weight: 700; font-size: 0.82rem; color: #475569; white-space: nowrap; }
+        .class-bar select { flex: 1; min-width: 140px; padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: white; cursor: pointer; }
+        .class-bar select:focus { outline: none; border-color: var(--primary); }
+
+        .classroom {
+            display: grid; gap: 8px;
+            background: #e2e8f0; padding: 16px; border-radius: 10px; border: 2px solid #cbd5e1;
+        }
+
+        .cell {
+            aspect-ratio: 1.1 / 1; border: 1.5px dashed #cbd5e1; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; position: relative;
+            cursor: pointer; background: rgba(255,255,255,0.3);
+        }
+
+
+
+        .item {
+            width: 94%; height: 90%; border-radius: 5px; display: flex;
+            align-items: center; justify-content: center; text-align: center;
+            font-size: clamp(0.52rem, 1vw, 0.75rem); font-weight: 800;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: grab; position: absolute; padding: 3px; box-sizing: border-box;
+            word-break: break-word; line-height: 1.2; overflow: hidden;
+        }
+        .type-desk { background: var(--desk); border: 2px solid var(--primary); color: var(--primary); }
+        .type-cattedra { background: var(--cattedra); color: white; border: 2px solid #92400e; }
+        .type-desk.custom-name { color: #dc2626; border-color: #dc2626; }
+
+        .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; margin-bottom: 4px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-outline { border: 1px solid #cbd5e1; background: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+
+        footer {
+            margin-top: 40px; padding: 20px 0; border-top: 1px solid #cbd5e1;
+            display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b;
+        }
+        footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 12px; box-shadow: 0 20px 25px rgba(0,0,0,0.2); z-index: 100; display: none; width: 300px; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 99; display: none; }
+        .student-picker { display: grid; gap: 5px; max-height: 200px; overflow-y: auto; margin: 10px 0; border-top: 1px solid #eee; padding-top: 10px; }
+        .custom-input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .custom-input-group input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem; }
+
+        /* ── STAMPA ─────────────────────────────────────── */
+        @page { size: A4 portrait; margin: 10mm; }
+
+        /* Div usato solo in stampa - nascosto a schermo */
+        #printArea { display: none; }
+
+        @media print {
+            .no-print, .overlay, .modal, footer, #classroom { display: none !important; }
+            #printArea { display: block !important; }
+
+            html, body {
+                width: 210mm; height: 297mm;
+                background: white !important;
+                padding: 0 !important; margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .container {
+                max-width: none !important;
+                width: 190mm !important;
+                padding: 0 !important;
+                margin: 0 auto !important;
+                transform-origin: top center !important;
+            }
+
+            .header-area { margin-bottom: 8px; }
+            .class-title { font-size: 14pt !important; }
+            .reference-date { color: black !important; font-size: 9pt !important; }
+
+            #printArea .print-grid {
+                display: grid !important;
+                gap: 3px !important;
+                background: white !important;
+                border: none !important;
+                padding: 0 !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            #printArea .pcell {
+                border: none !important;
+                background: none !important;
+                aspect-ratio: 1.2 / 1 !important;
+                position: relative;
+                display: flex; align-items: center; justify-content: center;
+            }
+
+            /* Corridoio: metà dimensione, nessun bordo, nessun aspect-ratio fisso */
+            #printArea .pcell.corridor {
+                aspect-ratio: auto !important;
+                border: none !important;
+                background: none !important;
+            }
+
+            #printArea .pitem {
+                position: absolute;
+                width: 96%; height: 92%;
+                display: flex; align-items: center; justify-content: center;
+                text-align: center;
+                font-size: 7pt !important;
+                font-weight: 800 !important;
+                font-family: 'Inter', sans-serif;
+                border: 1.5px solid #333 !important;
+                color: black !important;
+                background: white !important;
+                border-radius: 5px;
+                line-height: 1.2 !important;
+                overflow: hidden !important;
+                word-break: break-word !important;
+                padding: 2px !important;
+                box-sizing: border-box;
+            }
+
+            #printArea .pitem.is-cattedra {
+                background: #fde68a !important;
+                border: 2px solid #92400e !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainContainer">
+
+    <div class="header-area">
+        <h1 class="class-title" id="classTitle" contenteditable="true" onblur="saveAll()">Disposizione classe 1A</h1>
+        <div class="reference-date" id="refDate" contenteditable="true" onblur="saveAll()">Valida dal: --/--/----</div>
+    </div>
+
+    <div class="no-print">
+        <details open>
+            <summary style="cursor:pointer; font-weight:bold;">⚙️ Pannello di Controllo</summary>
+
+            <div class="class-bar">
+                <label>🏫 Classe:</label>
+                <select id="classSelect" onchange="switchClass(this.value)"></select>
+                <button class="btn btn-blue" onclick="newClass()">➕ Nuova</button>
+                <button class="btn btn-outline" onclick="renameClass()">✏️</button>
+                <button class="btn btn-danger" onclick="deleteClass()" style="padding:8px 10px;">🗑️</button>
+            </div>
+
+            <textarea id="studentList" placeholder="Nomi separati da ;" onchange="saveAll()"></textarea>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                <button class="btn btn-blue" onclick="generateRandom()">Distribuisci Alunni</button>
+                <button class="btn btn-warning" onclick="clearAllStudents()">🧹 Svuota Tutti i Posti</button>
+                <button class="btn btn-outline" onclick="exportJSON()">Esporta JSON</button>
+                <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">Importa JSON</button>
+                <input type="file" id="importFile" style="display:none" onchange="importJSON(event)">
+                <button class="btn btn-outline" onclick="prepareAndPrint()">🖨️ Stampa / Salva PDF</button>
+            </div>
+        </details>
+    </div>
+
+    <div id="classroom" class="classroom"></div>
+    <div id="printArea"></div>
+
+    <footer>
+        <div>© 2026 <b>Sebastiano Basile</b> - <a href="https://t.me/sostegno" target="_blank">sostegno.t.me</a></div>
+        <div>Licenza: CC BY-NC-SA 4.0 | <a href="https://github.com/sebastianobasile?tab=repositories" target="_blank">GitHub Projects</a></div>
+    </footer>
+</div>
+
+<div id="overlay" class="overlay" onclick="closeModal()"></div>
+
+<div id="modalStudent" class="modal">
+    <h3 style="margin:0 0 10px 0; font-size:1rem;">Assegna Posto</h3>
+    <div class="custom-input-group">
+        <input type="text" id="customName" placeholder="Nome manuale (es. Sostegno)">
+        <button class="btn" style="background:var(--accent); color:white" onclick="assignCustom()">OK</button>
+    </div>
+    <div id="studentPicker" class="student-picker"></div>
+    <button class="btn btn-outline" style="width:100%" onclick="assignStudent(null)">Rimuovi Alunno</button>
+    <button class="btn btn-danger" style="width:100%; margin-top:10px;" onclick="deleteElement()">Elimina</button>
+</div>
+
+<script>
+    const GRID_SIZE = 8;
+    const IDX_KEY  = 'classroomIndex_v2';
+    const DATA_PFX = 'classroom_v2_';
+
+    let currentId = null;
+    let state = {};
+
+    function emptyState(name) {
+        const d = new Date();
+        return {
+            title: name,
+            date: `Valida dal: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
+            students: [],
+            layout: Array(GRID_SIZE * GRID_SIZE).fill(null).map(() => ({ type: 'empty', student: null }))
+        };
+    }
+    function getIndex() { const r = localStorage.getItem(IDX_KEY); return r ? JSON.parse(r) : []; }
+    function saveIndex(idx) { localStorage.setItem(IDX_KEY, JSON.stringify(idx)); }
+    function loadState(id) { const r = localStorage.getItem(DATA_PFX + id); return r ? JSON.parse(r) : null; }
+    function persistState() { localStorage.setItem(DATA_PFX + currentId, JSON.stringify(state)); }
+
+    function rebuildSelect(activeId) {
+        const sel = document.getElementById('classSelect');
+        sel.innerHTML = '';
+        getIndex().forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name;
+            if (c.id === activeId) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function switchClass(id) {
+        saveAll();
+        currentId = id;
+        state = loadState(id) || emptyState(getIndex().find(c => c.id === id)?.name || '');
+        applyStateToUI(); renderGrid();
+    }
+
+    function applyStateToUI() {
+        const d = new Date();
+        const today = `Valida dal: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+        document.getElementById('classTitle').innerText = state.title;
+        document.getElementById('refDate').innerText = state.date || today;
+        document.getElementById('studentList').value = state.students.join('; ');
+    }
+
+    function newClass() {
+        const name = prompt('Nome della nuova classe (es. 2B):');
+        if (!name || !name.trim()) return;
+        const id = 'cls_' + Date.now();
+        const idx = getIndex(); idx.push({ id, name: name.trim() });
+        saveIndex(idx);
+        localStorage.setItem(DATA_PFX + id, JSON.stringify(emptyState(name.trim())));
+        rebuildSelect(id); switchClass(id);
+    }
+
+    function renameClass() {
+        const idx = getIndex();
+        const entry = idx.find(c => c.id === currentId);
+        if (!entry) return;
+        const newName = prompt('Nuovo nome per questa classe:', entry.name);
+        if (!newName || !newName.trim()) return;
+        entry.name = newName.trim(); saveIndex(idx);
+        state.title = newName.trim();
+        document.getElementById('classTitle').innerText = state.title;
+        persistState(); rebuildSelect(currentId);
+    }
+
+    function deleteClass() {
+        const idx = getIndex();
+        if (idx.length <= 1) { alert("Non puoi eliminare l'unica classe rimasta."); return; }
+        const entry = idx.find(c => c.id === currentId);
+        if (!confirm(`Eliminare la classe "${entry?.name}"? L'operazione non è reversibile.`)) return;
+        localStorage.removeItem(DATA_PFX + currentId);
+        const newIdx = idx.filter(c => c.id !== currentId);
+        saveIndex(newIdx); rebuildSelect(newIdx[0].id); switchClass(newIdx[0].id);
+    }
+
+    window.onload = () => {
+        let idx = getIndex();
+        const oldData = localStorage.getItem('classFinalGitHubV2');
+        if (oldData && idx.length === 0) {
+            const id = 'cls_default';
+            const parsed = JSON.parse(oldData);
+            idx = [{ id, name: parsed.title || 'Classe 1' }];
+            saveIndex(idx); localStorage.setItem(DATA_PFX + id, oldData);
+        }
+        if (idx.length === 0) {
+            const id = 'cls_default';
+            idx = [{ id, name: 'Disposizione classe 1A' }];
+            saveIndex(idx); localStorage.setItem(DATA_PFX + id, JSON.stringify(emptyState('Disposizione classe 1A')));
+        }
+        currentId = idx[0].id;
+        state = loadState(currentId) || emptyState(idx[0].name);
+        rebuildSelect(currentId); applyStateToUI(); renderGrid();
+    };
+
+    /* ── TOUCH DRAG & DROP ──────────────────────────────────────────────── */
+    let touchDragSourceIndex = null;
+    let touchClone = null;
+    let touchOffsetX = 0, touchOffsetY = 0;
+    let lastHighlighted = null;
+
+    function getCellIndexFromPoint(x, y) {
+        // Temporarily hide clone so elementFromPoint can see what's underneath
+        if (touchClone) touchClone.style.display = 'none';
+        const el = document.elementFromPoint(x, y);
+        if (touchClone) touchClone.style.display = '';
+        if (!el) return null;
+        const cell = el.closest('.cell');
+        if (!cell) return null;
+        const cells = Array.from(document.querySelectorAll('.cell'));
+        const idx = cells.indexOf(cell);
+        return idx >= 0 ? idx : null;
+    }
+
+    function onTouchStart(e, index) {
+        // Use a small delay to distinguish tap (click) from drag
+        const touch = e.touches[0];
+        touchDragSourceIndex = null;
+
+        const item = e.currentTarget;
+        const rect = item.getBoundingClientRect();
+        touchOffsetX = touch.clientX - rect.left;
+        touchOffsetY = touch.clientY - rect.top;
+
+        // Create visual clone
+        touchClone = item.cloneNode(true);
+        touchClone.style.cssText = `
+            position: fixed; z-index: 9999; pointer-events: none; opacity: 0.85;
+            width: ${rect.width}px; height: ${rect.height}px;
+            left: ${touch.clientX - touchOffsetX}px;
+            top: ${touch.clientY - touchOffsetY}px;
+            border-radius: 5px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transform: scale(1.08); transition: transform 0.1s;
+        `;
+        document.body.appendChild(touchClone);
+        touchDragSourceIndex = index;
+        item.style.opacity = '0.35';
+
+        e.preventDefault();
+    }
+
+    function onTouchMove(e) {
+        if (touchDragSourceIndex === null || !touchClone) return;
+        const touch = e.touches[0];
+        touchClone.style.left = `${touch.clientX - touchOffsetX}px`;
+        touchClone.style.top  = `${touch.clientY - touchOffsetY}px`;
+
+        // Highlight target cell
+        const targetIdx = getCellIndexFromPoint(touch.clientX, touch.clientY);
+        const cells = document.querySelectorAll('.cell');
+        if (lastHighlighted !== null && cells[lastHighlighted]) {
+            cells[lastHighlighted].style.background = '';
+        }
+        if (targetIdx !== null && targetIdx !== touchDragSourceIndex && cells[targetIdx]) {
+            cells[targetIdx].style.background = 'rgba(30,64,175,0.18)';
+            lastHighlighted = targetIdx;
+        } else {
+            lastHighlighted = null;
+        }
+        e.preventDefault();
+    }
+
+    function onTouchEnd(e) {
+        if (touchDragSourceIndex === null) return;
+        const touch = e.changedTouches[0];
+
+        // Remove clone and restore opacity
+        if (touchClone) { touchClone.remove(); touchClone = null; }
+        const cells = document.querySelectorAll('.cell');
+        const sourceItem = cells[touchDragSourceIndex]?.querySelector('.item');
+        if (sourceItem) sourceItem.style.opacity = '';
+
+        // Remove highlight
+        if (lastHighlighted !== null && cells[lastHighlighted]) {
+            cells[lastHighlighted].style.background = '';
+            lastHighlighted = null;
+        }
+
+        const targetIdx = getCellIndexFromPoint(touch.clientX, touch.clientY);
+        if (targetIdx !== null && targetIdx !== touchDragSourceIndex) {
+            [state.layout[targetIdx], state.layout[touchDragSourceIndex]] =
+                [state.layout[touchDragSourceIndex], state.layout[targetIdx]];
+            renderGrid(); saveAll();
+        }
+        touchDragSourceIndex = null;
+        e.preventDefault();
+    }
+    /* ────────────────────────────────────────────────────────────────────── */
+
+    function renderGrid() {
+        const container = document.getElementById('classroom');
+        container.innerHTML = '';
+        container.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+        container.style.gridTemplateRows = '';
+        state.layout.forEach((cell, index) => {
+            const div = document.createElement('div');
+            div.className = 'cell';
+            div.ondragover = (e) => e.preventDefault();
+            div.ondrop = (e) => handleDrop(e, index);
+            if (cell.type !== 'empty') {
+                const item = document.createElement('div');
+                item.className = `item type-${cell.type}`;
+                item.draggable = true;
+                item.innerText = cell.student || (cell.type === 'cattedra' ? 'CATTEDRA' : '');
+                if (cell.type === 'desk' && cell.student && !state.students.includes(cell.student)) {
+                    item.classList.add('custom-name');
+                }
+                item.ondragstart = (e) => e.dataTransfer.setData("sourceIndex", index);
+                item.onclick = (e) => { e.stopPropagation(); handleCellClick(index); };
+
+                // Touch drag support (LIM / Android / iOS)
+                item.addEventListener('touchstart', (e) => onTouchStart(e, index), { passive: false });
+                item.addEventListener('touchmove',  onTouchMove,  { passive: false });
+                item.addEventListener('touchend',   onTouchEnd,   { passive: false });
+
+                div.appendChild(item);
+            } else {
+                div.onclick = () => handleCellClick(index);
+            }
+            container.appendChild(div);
+        });
+    }
+
+    /** Calcola bounds e corridoi per la stampa */
+    function computePrintLayout() {
+        let minCol = GRID_SIZE, maxCol = 0, minRow = GRID_SIZE, maxRow = 0, hasContent = false;
+        state.layout.forEach((cell, i) => {
+            if (cell.type !== 'empty') {
+                hasContent = true;
+                const r = Math.floor(i / GRID_SIZE), c = i % GRID_SIZE;
+                if (c < minCol) minCol = c; if (c > maxCol) maxCol = c;
+                if (r < minRow) minRow = r; if (r > maxRow) maxRow = r;
+            }
+        });
+        if (!hasContent) return null;
+
+        // Colonne corridoio: interamente vuote nell'area di contenuto (non bordi)
+        const corridorCols = new Set();
+        for (let c = minCol + 1; c < maxCol; c++) {
+            let empty = true;
+            for (let r = minRow; r <= maxRow; r++) {
+                if (state.layout[r * GRID_SIZE + c].type !== 'empty') { empty = false; break; }
+            }
+            if (empty) corridorCols.add(c);
+        }
+        // Righe corridoio: interamente vuote nell'area di contenuto (non bordi)
+        const corridorRows = new Set();
+        for (let r = minRow + 1; r < maxRow; r++) {
+            let empty = true;
+            for (let c = minCol; c <= maxCol; c++) {
+                if (state.layout[r * GRID_SIZE + c].type !== 'empty') { empty = false; break; }
+            }
+            if (empty) corridorRows.add(r);
+        }
+        return { minRow, maxRow, minCol, maxCol, corridorCols, corridorRows };
+    }
+
+    function clearAllStudents() {
+        if (confirm("Vuoi davvero svuotare tutti i banchi?\n\nI nomi personalizzati (in rosso) verranno mantenuti.")) {
+            state.layout.forEach(cell => {
+                if (cell.type === 'desk' && cell.student && state.students.includes(cell.student)) {
+                    cell.student = null;
+                }
+            });
+            renderGrid(); saveAll();
+        }
+    }
+
+    function handleDrop(e, targetIndex) {
+        const sourceIndex = e.dataTransfer.getData("sourceIndex");
+        if (sourceIndex === "" || sourceIndex == targetIndex) return;
+        [state.layout[targetIndex], state.layout[sourceIndex]] = [state.layout[sourceIndex], state.layout[targetIndex]];
+        renderGrid(); saveAll();
+    }
+
+    let activeIndex = null;
+    function handleCellClick(index) {
+        activeIndex = index;
+        if (state.layout[index].type === 'empty') {
+            // Crea subito un banco e apri il modale per il nome
+            state.layout[index] = { type: 'desk', student: null };
+            renderGrid(); saveAll();
+            openStudentModal(index);
+        } else {
+            openStudentModal(index);
+        }
+    }
+
+    function openStudentModal(index) {
+        updateStudentArray();
+        document.getElementById('customName').value = '';
+        const assigned = state.layout.filter((c, i) => c.student && i !== index).map(c => c.student);
+        const picker = document.getElementById('studentPicker');
+        picker.innerHTML = '';
+        if (state.layout[index].type === 'desk') {
+            state.students.forEach(name => {
+                if (!assigned.includes(name)) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-outline';
+                    btn.innerText = name;
+                    btn.onclick = () => assignStudent(name);
+                    picker.appendChild(btn);
+                }
+            });
+        }
+        showModal('modalStudent');
+    }
+
+    function assignCustom() { const name = document.getElementById('customName').value.trim(); if (name) assignStudent(name); }
+    function assignStudent(name) { state.layout[activeIndex].student = name; closeModal(); renderGrid(); saveAll(); }
+
+    function prepareAndPrint() {
+        const pl = computePrintLayout();
+        const printArea = document.getElementById('printArea');
+        printArea.innerHTML = '';
+
+        if (!pl) { window.print(); return; }
+
+        const { minRow, maxRow, minCol, maxCol, corridorCols, corridorRows } = pl;
+
+        // Costruisci grid-template con corridoi a metà
+        const colParts = [], rowParts = [];
+        for (let c = minCol; c <= maxCol; c++) colParts.push(corridorCols.has(c) ? '0.5fr' : '1fr');
+        for (let r = minRow; r <= maxRow; r++) rowParts.push(corridorRows.has(r) ? '0.4fr' : '1fr');
+
+        const grid = document.createElement('div');
+        grid.className = 'print-grid';
+        grid.style.gridTemplateColumns = colParts.join(' ');
+        grid.style.gridTemplateRows = rowParts.join(' ');
+
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const cell = state.layout[r * GRID_SIZE + c];
+                const div = document.createElement('div');
+                const isCorridor = corridorCols.has(c) || corridorRows.has(r);
+                div.className = 'pcell' + (isCorridor ? ' corridor' : '');
+
+                if (!isCorridor && cell.type !== 'empty') {
+                    const item = document.createElement('div');
+                    item.className = 'pitem' + (cell.type === 'cattedra' ? ' is-cattedra' : '');
+                    item.innerText = cell.student || (cell.type === 'cattedra' ? 'CATTEDRA' : '');
+                    div.appendChild(item);
+                }
+                grid.appendChild(div);
+            }
+        }
+        printArea.appendChild(grid);
+
+        // Calcola scala per riempire al meglio la pagina A4
+        const MM = 3.7795;
+        const printW = 190 * MM;
+        const printH = 257 * MM;
+        const wrapEl   = document.getElementById('mainContainer');
+        const headerEl = document.querySelector('.header-area');
+
+        // Misura altezza del grid print temporaneo
+        printArea.style.display = 'block';
+        const contentW = wrapEl.offsetWidth;
+        const contentH = headerEl.offsetHeight + grid.offsetHeight + 20;
+        printArea.style.display = '';
+
+        const scale = Math.min(printW / contentW, printH / contentH, 1.8);
+        wrapEl.style.transform = `scale(${scale})`;
+        wrapEl.style.transformOrigin = 'top center';
+
+        const d = new Date();
+        const dateStr = `${String(d.getDate()).padStart(2,'0')}_${String(d.getMonth()+1).padStart(2,'0')}_${d.getFullYear()}`;
+        document.title = `${state.title.replace(/[\/\\:*?"<>|]/g,'').trim()} - ${dateStr}`;
+
+        window.print();
+
+        setTimeout(() => {
+            wrapEl.style.transform = '';
+            wrapEl.style.transformOrigin = '';
+            printArea.innerHTML = '';
+            document.title = 'Classroom Planner Pro - S. Basile';
+        }, 1500);
+    }
+
+    function deleteElement() { state.layout[activeIndex] = { type: 'empty', student: null }; closeModal(); renderGrid(); saveAll(); }
+    function updateStudentArray() { state.students = document.getElementById('studentList').value.split(/[;\n]/).map(s => s.trim()).filter(Boolean); }
+
+    function saveAll() {
+        updateStudentArray();
+        state.title = document.getElementById('classTitle').innerText.trim();
+        state.date  = document.getElementById('refDate').innerText.trim();
+        persistState();
+        const idx = getIndex();
+        const entry = idx.find(c => c.id === currentId);
+        if (entry && entry.name !== state.title) { entry.name = state.title; saveIndex(idx); rebuildSelect(currentId); }
+    }
+
+    function generateRandom() {
+        updateStudentArray();
+        let pool = [...state.students].sort(() => Math.random() - 0.5);
+        state.layout.forEach(cell => {
+            if (cell.type === 'desk') {
+                if (cell.student && !state.students.includes(cell.student)) return;
+                cell.student = pool.shift() || null;
+            }
+        });
+        renderGrid(); saveAll();
+    }
+
+    function exportJSON() {
+        saveAll();
+        const d = new Date();
+        const dateStr = `${String(d.getDate()).padStart(2,'0')}_${String(d.getMonth()+1).padStart(2,'0')}_${d.getFullYear()}`;
+        const fileName = `${state.title.replace(/[\/\\:*?"<>|]/g,'').trim()}_${dateStr}.json`;
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click();
+    }
+
+    function importJSON(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state = JSON.parse(e.target.result);
+            persistState();
+            const idx = getIndex();
+            const entry = idx.find(c => c.id === currentId);
+            if (entry) { entry.name = state.title; saveIndex(idx); rebuildSelect(currentId); }
+            applyStateToUI(); renderGrid();
+        };
+        reader.readAsText(event.target.files[0]);
+    }
+
+    function showModal(id) { document.getElementById(id).style.display = 'block'; document.getElementById('overlay').style.display = 'block'; }
+    function closeModal() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); document.getElementById('overlay').style.display = 'none'; }
+</script>
+</body>
+</html>
