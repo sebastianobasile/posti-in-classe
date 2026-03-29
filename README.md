@@ -88,7 +88,7 @@ L'applicazione è **monolitica per scelta**: un solo file `index.html` che non r
 
 Quest'opera è distribuita con licenza  
 **Creative Commons Attribuzione - Non commerciale - Condividi allo stesso modo 4.0 Internazionale**  
-[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.it)
+![Licenza](https://img.shields.io/badge/Licenza-CC%20BY--NC--SA%204.0-green)
 
 Puoi liberamente:
 - ✅ **Condividere** — copiare e ridistribuire il materiale
