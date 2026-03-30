@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Classroom Planner Pro - S. Basile</title>
     <style>
-        :root { --primary: #1e40af; --bg: #f1f5f9; --desk: #ffffff; --cattedra: #d97706; --accent: #10b981; }
+        :root { --primary: #1e40af; --bg: #f1f5f9; --desk: #ffffff; --cattedra: #d97706; --accent: #10b981; --desk-font-size: 0.72rem; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; user-select: none; display: flex; flex-direction: column; min-height: 100vh; }
         .container { max-width: 1050px; margin: 0 auto; flex: 1; }
 
@@ -36,7 +36,7 @@
         .item {
             width: 94%; height: 90%; border-radius: 5px; display: flex;
             align-items: center; justify-content: center; text-align: center;
-            font-size: clamp(0.52rem, 1vw, 0.75rem); font-weight: 800;
+            font-size: var(--desk-font-size); font-weight: 800;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             cursor: grab; position: absolute; padding: 3px; box-sizing: border-box;
             word-break: break-word; line-height: 1.2; overflow: hidden;
@@ -122,7 +122,7 @@
                 width: 96%; height: 92%;
                 display: flex; align-items: center; justify-content: center;
                 text-align: center;
-                font-size: 7pt !important;
+                font-size: var(--print-font-size, 7pt) !important;
                 font-weight: 800 !important;
                 font-family: 'Inter', sans-serif;
                 border: 1.5px solid #333 !important;
@@ -162,6 +162,14 @@
                 <button class="btn btn-blue" onclick="newClass()">➕ Nuova</button>
                 <button class="btn btn-outline" onclick="renameClass()">✏️</button>
                 <button class="btn btn-danger" onclick="deleteClass()" style="padding:8px 10px;">🗑️</button>
+            </div>
+
+            <div class="class-bar" style="margin-top:8px;">
+                <label>🔤 Dimensione testo banchi:</label>
+                <input type="range" id="fontSizeRange" min="6" max="20" value="10" step="1"
+                    oninput="updateFontSize(this.value)"
+                    style="flex:1; min-width:120px; cursor:pointer;">
+                <span id="fontSizeLabel" style="font-weight:700; font-size:0.85rem; color:#1e40af; min-width:38px; text-align:right;">10 pt</span>
             </div>
 
             <textarea id="studentList" placeholder="Nomi separati da ;" onchange="saveAll()"></textarea>
@@ -212,6 +220,7 @@
             title: name,
             date: `Valida dal: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
             students: [],
+            fontSize: 10,
             layout: Array(GRID_SIZE * GRID_SIZE).fill(null).map(() => ({ type: 'empty', student: null }))
         };
     }
@@ -238,12 +247,29 @@
         applyStateToUI(); renderGrid();
     }
 
+    function updateFontSize(val) {
+        val = parseInt(val);
+        document.documentElement.style.setProperty('--desk-font-size', val + 'pt');
+        document.getElementById('fontSizeRange').value = val;
+        document.getElementById('fontSizeLabel').textContent = val + ' pt';
+        state.fontSize = val;
+        persistState();
+    }
+
+    function applyFontSizeToUI() {
+        const val = state.fontSize || 10;
+        document.documentElement.style.setProperty('--desk-font-size', val + 'pt');
+        document.getElementById('fontSizeRange').value = val;
+        document.getElementById('fontSizeLabel').textContent = val + ' pt';
+    }
+
     function applyStateToUI() {
         const d = new Date();
         const today = `Valida dal: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
         document.getElementById('classTitle').innerText = state.title;
         document.getElementById('refDate').innerText = state.date || today;
         document.getElementById('studentList').value = state.students.join('; ');
+        applyFontSizeToUI();
     }
 
     function newClass() {
@@ -567,6 +593,9 @@
         wrapEl.style.transform = `scale(${scale})`;
         wrapEl.style.transformOrigin = 'top center';
 
+        // Applica dimensione font anche alla stampa
+        document.documentElement.style.setProperty('--print-font-size', (state.fontSize || 10) + 'pt');
+
         const d = new Date();
         const dateStr = `${String(d.getDate()).padStart(2,'0')}_${String(d.getMonth()+1).padStart(2,'0')}_${d.getFullYear()}`;
         document.title = `${state.title.replace(/[\/\\:*?"<>|]/g,'').trim()} - ${dateStr}`;
@@ -588,6 +617,7 @@
         updateStudentArray();
         state.title = document.getElementById('classTitle').innerText.trim();
         state.date  = document.getElementById('refDate').innerText.trim();
+        state.fontSize = parseInt(document.getElementById('fontSizeRange').value) || 10;
         persistState();
         const idx = getIndex();
         const entry = idx.find(c => c.id === currentId);
